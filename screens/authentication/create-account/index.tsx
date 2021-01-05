@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Input, Layout, Text } from "@ui-kitten/components";
 import { authTokenVar } from "../../../apollo";
-import { ApolloError, gql, useMutation } from "@apollo/client";
+import { gql, useMutation } from "@apollo/client";
 import {
   CreateAccountMutation,
   CreateAccountMutationVariables,
@@ -48,13 +48,36 @@ export const CreateAccount = () => {
     resolver: yupResolver(createAccountValidationSchema),
     mode: "all",
   });
-  const onSubmit = (data: FormData) => console.log(data);
+  const [responseError, setResponseError] = React.useState<null | string>(null);
+
+  const onSubmit = (data: FormData) => {
+    if (!loading) {
+      const { email, password } = data;
+      if (email && password) {
+        createAccountMutation({
+          variables: {
+            createAccountInput: { email, password, role: UserRole.Client },
+          },
+        });
+      }
+    }
+  };
+
+  const onCompleted = () => {
+    if (data?.createAccount.ok) {
+      console.log("Account created");
+    }
+    if (data?.createAccount.error) {
+      setResponseError(data.createAccount.error);
+    }
+  };
 
   const [
     createAccountMutation,
-    { loading, data: createAccountMutationResult, error },
+    { loading, data, error: createAccountMutationError },
   ] = useMutation<CreateAccountMutation, CreateAccountMutationVariables>(
-    CREATE_ACCOUNT_MUTATION
+    CREATE_ACCOUNT_MUTATION,
+    { onCompleted }
   );
 
   return (
@@ -129,6 +152,11 @@ export const CreateAccount = () => {
         ) : null}
       </Layout>
       <Layout style={styles.buttonGroup}>
+        {createAccountMutationError || responseError ? (
+          <Text status="danger">
+            {responseError || `We couldn't create your account`}
+          </Text>
+        ) : null}
         <Button size="large" onPress={handleSubmit(onSubmit)}>
           SIGN UP
         </Button>
